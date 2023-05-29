@@ -3,10 +3,42 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PingTico_WireguardClient"
+        xmlns:helpers="clr-namespace:PingTico_WireguardClient.Helpers"
         mc:Ignorable="d"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        Background="#333"
         Title="MainWindow" Height="450" Width="800">
+    <Window.Resources>
+        <helpers:IconToImageSourceConverter x:Key="IconToImageSourceConverter"/>
+    </Window.Resources>
     <Grid>
-
+        <Grid VerticalAlignment="Top" Height="23" Background="Transparent" MouseDown="DragEvent" Cursor="SizeAll">
+            <Rectangle Fill="#222" Height="23"/>
+            <Rectangle Fill="#333" Height="2" Width="80" VerticalAlignment="Top" Margin="0 5 0 0"/>
+            <Rectangle Fill="#333" Height="2" Width="80" VerticalAlignment="Top" Margin="0 10 0 0"/>
+            <Rectangle Fill="#333" Height="2" Width="80" VerticalAlignment="Top" Margin="0 15 0 0"/>
+            <Rectangle Fill="#111" Height="1"  VerticalAlignment="Top" Margin="0 22 0 0"/>
+        </Grid>
+        <Button Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click" Margin="-1,22,0,0" HorizontalAlignment="Left" Width="302" Height="22" VerticalAlignment="Top" Background="#FFDA284B" BorderBrush="{x:Null}" Foreground="White" FontWeight="Bold" />
+        <ListView Name="ProcessListView" ItemsSource="{Binding}" Background="#444" HorizontalAlignment="Left" Width="300" Margin="0 43 0 0" BorderBrush="{x:Null}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <CheckBox IsChecked="{Binding Path=IsSelected, Mode=TwoWay}">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{Binding Path=Icon, Converter={StaticResource IconToImageSourceConverter}}" Width="16" Height="16"/>
+                            <TextBlock Text="{Binding Path=Name}" Foreground="#eee" Margin="5,0,0,0" />
+                        </StackPanel>
+                        <CheckBox.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Path=ExecutableName}" />
+                                <TextBlock Text="{Binding Path=PID}" />
+                            </StackPanel>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
     </Grid>
 </Window>
