@@ -21,7 +21,6 @@ public partial class App : Application
 {
     private void Application_Startup(object sender, StartupEventArgs e)
     {
-
         if (e.Args.Length == 3 && e.Args[0] == "/service")
         {
             var t = new Thread(() =>

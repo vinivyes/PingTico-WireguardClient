@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,7 +16,11 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-
+using Tunnel;
+using PingTico_WireguardClient.Utils;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Threading;
+using PingTico_WireguardClient.Services;
 
 namespace PingTico_WireguardClient
 {
@@ -28,7 +33,28 @@ namespace PingTico_WireguardClient
         {
             InitializeComponent();
             LoadApplicationList();
+
+
+            _ = Task.Run(() =>
+            {
+                while (true)
+                {
+                    TimeSpan? latestHandshake = GetHandshake();
+                    if (Wireguard.isConnected && latestHandshake.HasValue)
+                    {
+                        Dispatcher.Invoke(new Action(
+                            () =>
+                                {
+                                    StatusLbl.Content = latestHandshake.Value.ToString(@"mm\:ss") ?? "Disconnected";
+                                }
+                            )
+                        );
+                    }
+                    Thread.Sleep(1000);
+                }
+            });
         }
+        private DateTime connectionDate = DateTime.MinValue;
 
         private void DragEvent(object sender, MouseButtonEventArgs e)
         {
@@ -36,7 +62,7 @@ namespace PingTico_WireguardClient
                 this.DragMove();
         }
 
-        private void RefreshButton_Click(object sender, RoutedEventArgs e)
+        private void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
             LoadApplicationList();
         }
@@ -62,6 +88,148 @@ namespace PingTico_WireguardClient
             }
 
             ProcessListView.ItemsSource = applications;
+        }
+
+        private void UpdateForm()
+        {
+            ConnectBtn.IsEnabled = (DateTime.Now - connectionDate).TotalSeconds > 2;
+            ConnectBtn.Content = !IsConnected() ? "Connect" : "Disconnect";
+        }
+
+        private void Connect()
+        {
+            if (IsConnected())
+            {
+                ConnectBtn.IsEnabled = false;
+                ConnectBtn.Content = "Disconnecting...";
+
+                _ = Task.Run(() =>
+                {
+                    Dispatcher.Invoke(new Action(
+                        () =>
+                            {
+                                Service.Remove(Utils.Utils.LocalPath("pingtico.conf"), true);
+                                Wireguard.isConnected = false;
+                                UpdateForm();
+                            }
+                        )
+                    );
+                });
+            }
+            else
+            {
+                try
+                {
+                    ConnectBtn.IsEnabled = false;
+                    ConnectBtn.Content = "Connecting...";
+
+                    Microsoft.Win32.OpenFileDialog dialog = new Microsoft.Win32.OpenFileDialog();
+
+                    dialog.DefaultExt = ".conf";
+                    dialog.Filter = "Wireguard CONF Files (*.conf)|*.conf";
+
+                    Nullable<bool> result = dialog.ShowDialog();
+
+                    if (result == true)
+                    {
+                        string filename = dialog.FileName;
+
+                        string[] fileConfig = File.ReadAllLines(filename);
+                        fileConfig = fileConfig.Where(l => !string.IsNullOrEmpty(l)).ToArray();
+
+                        bool hasTableOff = false;
+                        foreach (string line in fileConfig)
+                            if (line.Trim().Replace(" ", "").ToLower() == "table=off")
+                                hasTableOff = true;
+
+                        if (!hasTableOff)
+                        {
+                            List<string> _fileConfig = fileConfig.ToList();
+                            for (int i = 0; i < _fileConfig.Count; i++)
+                            {
+                                if (_fileConfig[i].Trim().Replace(" ", "").ToLower() == "[peer]")
+                                {
+                                    _fileConfig.Insert(i - 1, "Table=off");
+                                    i++;
+                                }
+                                if (_fileConfig[i].Trim().Replace(" ", "").ToLower().Split("=").Contains("address"))
+                                {
+                                    AddressLbl.Content = _fileConfig[i].Trim().Replace(" ", "").ToLower().Split("=").Last();
+                                }
+                                if (_fileConfig[i].Trim().Replace(" ", "").ToLower().Split("=").Contains("endpoint"))
+                                {
+                                    EndpointLbl.Content = _fileConfig[i].Trim().Replace(" ", "").ToLower().Split("=").Last();
+                                }
+                            }
+                                
+                            fileConfig = _fileConfig.ToArray();
+                        }
+
+                        File.WriteAllText(Utils.Utils.LocalPath("pingtico.conf"), string.Join(Environment.NewLine, fileConfig.Select(l => l.Trim()).ToArray()));
+
+                        Service.Add(Utils.Utils.LocalPath("pingtico.conf"), false);
+                        Wireguard.isConnected = true;
+
+                        connectionDate = DateTime.Now;
+
+                        ConnectionNameLbl.Content = filename.Split('\\').Last();
+
+                        UpdateForm();
+
+                        _ = Task.Run(() =>
+                        {
+                            Dispatcher.Invoke(new Action(
+                                () =>
+                                    {
+                                        Thread.Sleep(3000);
+                                        UpdateForm();
+                                    }
+                                )
+                            );
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error while connecting: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    UpdateForm();
+                }
+            }
+        }
+
+        private bool IsConnected()
+        {
+            try
+            {
+                Service.GetAdapter("pingtico");
+                return true;
+            }
+            catch { return false; }
+        }
+
+        public TimeSpan? GetHandshake()
+        {
+            try
+            {
+                return null;
+            }
+            catch { return null; }
+        }
+
+
+        private void ConnectBtn_Click(object sender, RoutedEventArgs e)
+        {
+            Connect();
+        }
+
+        private void MinimizeBtn_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            this.WindowState = WindowState.Minimized;
+        }
+
+        private void CloseBtn_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Environment.Exit(0);
         }
     }
 }

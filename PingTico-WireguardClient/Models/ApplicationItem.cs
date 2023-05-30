@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -17,7 +18,8 @@ public class ApplicationItem : INotifyPropertyChanged
     public string ExecutableName { get; set; }
     public int PID { get; set; }
     public Icon Icon { get; set; }
-
+    public Process? splitTunnelling { get; set; }
+    
     public bool IsSelected
     {
         get { return _isSelected; }
