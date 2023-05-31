@@ -39,13 +39,31 @@ namespace PingTico_WireguardClient
             {
                 while (true)
                 {
-                    TimeSpan? latestHandshake = GetHandshake();
-                    if (Wireguard.isConnected && latestHandshake.HasValue)
+                    TimeSpan? latestHandshake = Wireguard.isConnected ? GetHandshake() : null;
+                    if (latestHandshake.HasValue)
                     {
                         Dispatcher.Invoke(new Action(
                             () =>
                                 {
-                                    StatusLbl.Content = latestHandshake.Value.ToString(@"mm\:ss") ?? "Disconnected";
+                                    if (Wireguard.isConnected && latestHandshake.Value.TotalMinutes > 3)
+                                    {
+                                        Connect();
+                                        return;
+                                    }
+
+                                    StatusLbl.Content = $"Connected - Latest Handshake: {latestHandshake.Value.ToString(@"mm\:ss")}";
+                                    StatusImg.Background = Brushes.Green;
+                                }
+                            )
+                        );
+                    }
+                    else
+                    {
+                        Dispatcher.Invoke(new Action(
+                                () =>
+                                {
+                                    StatusLbl.Content = "Disconnected";
+                                    StatusImg.Background = Brushes.Red;
                                 }
                             )
                         );
@@ -110,6 +128,12 @@ namespace PingTico_WireguardClient
                             {
                                 Service.Remove(Utils.Utils.LocalPath("pingtico.conf"), true);
                                 Wireguard.isConnected = false;
+
+                                ConnectionNameLbl.Content = "-";
+                                AddressLbl.Content = "-";
+                                EndpointLbl.Content = "-";
+                                StatusLbl.ToolTip = null;
+
                                 UpdateForm();
                             }
                         )
@@ -211,7 +235,11 @@ namespace PingTico_WireguardClient
         {
             try
             {
-                return null;
+                DateTime latestHandshake = Service.GetAdapter("pingtico.conf").GetConfiguration().Peers.Last().LastHandshake;
+                if(latestHandshake < DateTime.UtcNow.AddDays(-1))
+                    return null;
+
+                return (DateTime.UtcNow - latestHandshake);
             }
             catch { return null; }
         }
@@ -230,6 +258,33 @@ namespace PingTico_WireguardClient
         private void CloseBtn_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             Environment.Exit(0);
+        }
+
+        private void CheckBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            CheckBox checkBox = sender as CheckBox;
+
+            if (checkBox != null && checkBox.IsChecked == true)
+            {
+                if(MessageBox.Show("We do not recommend removing split-tunnel to prevent connection issues, instead, disconnect the VPN. Are you sure you want to continue ?","Continue?", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+                {
+                    e.Handled = true;
+                }
+                else
+                {
+                    checkBox.IsChecked = false;
+                }
+            }
+        }
+
+        private void CheckBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+
+        }
+
+        private void ProcessListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            
         }
     }
 }

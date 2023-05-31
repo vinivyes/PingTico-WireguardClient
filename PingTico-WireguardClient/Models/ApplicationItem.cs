@@ -12,7 +12,7 @@ public class ApplicationItem : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler PropertyChanged;
 
-    private bool _isSelected;
+    private bool _isSelected, _isEnabled;
 
     public string Name { get; set; }
     public string ExecutableName { get; set; }
@@ -26,7 +26,17 @@ public class ApplicationItem : INotifyPropertyChanged
         set
         {
             _isSelected = value;
+            IsEnabled = !value;
             OnPropertyChanged("IsSelected");
+        }
+    }
+    public bool IsEnabled
+    {
+        get { return _isEnabled; }
+        set
+        {
+            _isEnabled = value;
+            OnPropertyChanged("IsEnabled");
         }
     }
 
