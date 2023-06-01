@@ -9,5 +9,6 @@ namespace PingTico_WireguardClient.Services
     public static class Wireguard
     {
         public static bool isConnected = false;
+        public static string localAddress = "";
     }
 }
